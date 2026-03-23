@@ -19,21 +19,21 @@ BATCH_SIZE = 4  # Kept small for laptop memory safety
 LR = 1e-4
 DATA_DIR = Path("data/CAMUS_public")
 
-# 3. Smart Data Detection (Prevents FileNotFoundError)
+# 3. Smart Data Detection (Now with File Verification)
 def get_available_patients(base_path):
     existing_patients = []
-    # Check both folders you mentioned
     for folder in ["training_pngs", "testing_pngs"]:
         dir_path = base_path / folder
         if dir_path.exists():
-            # Finds folders named 'patientXXXX'
-            found = [d.name for d in dir_path.iterdir() if d.is_dir() and d.name.startswith("patient")]
-            existing_patients.extend(found)
+            # Get all subdirectories
+            for p_dir in dir_path.iterdir():
+                if p_dir.is_dir() and p_dir.name.startswith("patient"):
+                    # CRITICAL: Only add if the required image actually exists inside
+                    if (p_dir / "ED.png").exists():
+                        existing_patients.append(p_dir.name)
     
-    # Clean and sort the list
     unique_patients = sorted(list(set(existing_patients)))
     
-    # Save to a new verified subgroup file
     verified_file = "subgroup_available.txt"
     with open(base_path / verified_file, "w") as f:
         for p in unique_patients:
