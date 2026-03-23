@@ -41,7 +41,6 @@ patient0092
 patient0093
 patient0094
 patient0095
-patient0096
 patient0097
 patient0098
 patient0099
