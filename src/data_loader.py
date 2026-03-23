@@ -65,16 +65,31 @@ class CamusPngDataset(Dataset):
         image = image.resize((256, 256), resample=Image.BILINEAR)
         mask = mask.resize((256, 256), resample=Image.NEAREST)
 
+        # --- FIX FOR INDEX ERROR: Label Mapping ---
+        mask_np = np.array(mask)
+        unique_labels = np.unique(mask_np) # Finds [0, 77, 150, ...]
+        
+        # We map every unique value found to a sequential index (0, 1, 2, 3)
+        # This ensures the model never sees a '77' but sees class '1' instead.
+        label_map = {val: i for i, val in enumerate(sorted(unique_labels))}
+        
+        # Apply mapping
+        final_mask = np.zeros_like(mask_np)
+        for val, target_idx in label_map.items():
+            if target_idx < 4:  # Safety check for 4 classes
+                final_mask[mask_np == val] = target_idx
+        # ------------------------------------------
+
         spacing = self._get_spacing_from_cfg(p_id)
 
         if self.transform:
             image = self.transform(image)
         
-        mask = torch.from_numpy(np.array(mask)).long()
+        mask_tensor = torch.from_numpy(final_mask).long()
 
         return {
             "image": image,
-            "mask": mask,
+            "mask": mask_tensor,
             "patient_id": p_id,
             "spacing": torch.tensor(spacing, dtype=torch.float32)
         }
