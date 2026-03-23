@@ -22,15 +22,22 @@ DATA_DIR = Path("data/CAMUS_public")
 # 3. Smart Data Detection (Now with File Verification)
 def get_available_patients(base_path):
     existing_patients = []
-    for folder in ["training_pngs", "testing_pngs"]:
-        dir_path = base_path / folder
+    # Possible folders where patients might live
+    for folder_name in ["training_pngs", "testing_pngs"]:
+        dir_path = base_path / folder_name
         if dir_path.exists():
-            # Get all subdirectories
+            # Check every item in that directory
             for p_dir in dir_path.iterdir():
                 if p_dir.is_dir() and p_dir.name.startswith("patient"):
-                    # CRITICAL: Only add if the required image actually exists inside
-                    if (p_dir / "ED.png").exists():
+                    # CRITICAL: Verify the actual image AND mask files are present
+                    img_file = p_dir / "ED.png"
+                    mask_file = p_dir / "ED_gt.png"
+                    
+                    if img_file.exists() and mask_file.exists():
                         existing_patients.append(p_dir.name)
+                    else:
+                        # Log the skipped patient so you know which ones are broken
+                        print(f"Skipping {p_dir.name}: Missing ED.png or ED_gt.png")
     
     unique_patients = sorted(list(set(existing_patients)))
     
