@@ -16,7 +16,7 @@ print(f"Device: {device}")
 # 2. Hyperparameters
 EPOCHS = 20
 BATCH_SIZE = 4  # Kept small for laptop memory safety
-LR = 1e-4
+LR = 5e-5
 DATA_DIR = Path("data/CAMUS_public")
 
 # 3. Smart Data Detection (Now with File Verification)
@@ -61,13 +61,22 @@ transform = T.Compose([
 train_ds = CamusPngDataset(str(DATA_DIR), verified_subgroup, transform=transform)
 train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
 
-# 5. Model, Loss, Optimizer
+# 5. Model, Loss (Weighted), and Optimizer
 model = UNet(n_channels=1, n_classes=4).to(device)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=LR)
+
+# --- CRITICAL FIX: CLASS WEIGHTING ---
+weights = torch.tensor([1.0, 100.0, 30.0, 5.0]).to(device)
+criterion = torch.nn.CrossEntropyLoss(weight=weights)
+# -------------------------------------
+
+optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
 
 # 6. Training Loop
 print(f"\nStarting Training for {EPOCHS} Epochs...")
+weights_dir = "models/weights"
+os.makedirs(weights_dir, exist_ok=True)
+weights_path = os.path.join(weights_dir, "unet_cardiac.pth")
+
 for epoch in range(EPOCHS):
     model.train()
     epoch_loss = 0
@@ -89,6 +98,10 @@ for epoch in range(EPOCHS):
     
     avg_loss = epoch_loss / len(train_loader)
     print(f"Epoch [{epoch+1}/{EPOCHS}] -> Loss: {avg_loss:.4f}")
+
+    # --- NEW: AUTOSAVE AFTER EVERY EPOCH ---
+    torch.save(model.state_dict(), weights_path)
+    print(f"Checkpoint saved: {weights_path}")
 
 # 7. Save Weights
 os.makedirs("models/weights", exist_ok=True)
